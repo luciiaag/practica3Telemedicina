@@ -1,174 +1,186 @@
-// Crear un servidor HTTP
-var http = require("http");
-var httpServer = http.createServer();
 
-// 1. Importar el cliente de Supabase
+const { WebSocketServer, WebSocket } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 
-// 2. Configurar con tu URL y tu Public Key (anon key)
+// CONEXION CON TU SUPABASE
 const supabaseUrl = 'https://jhrpvknlxprkivnimyxh.supabase.co';
-const supabaseKey = 'sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU'; // <--- Pega aquí tu public key
+const supabaseKey = 'sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU';
 const supabase = createClient(supabaseUrl, supabaseKey);
-//Antes de esto, instalo npm install jwt-simple
 
-var jwt = require("jwt-simple"); // PRÁCTICA 3 - PARTE 2: librería para crear y leer tokens JWT
-var clave = "miSecretoMasOscuro"; // clave para codificar / decodificar el token
+// SERVIDOR WEBSOCKET
+const puerto = 4444;
+const wsServer = new WebSocketServer({ port: puerto });
 
-app.use(express.json()); 
+// Lista de clientes conectados
+const clientes = [];
 
+wsServer.on('connection', function(connection) {
 
-var WebSocketServer = require("websocket").server; 
-//var conexionBD = require("./conexion_mysql.js");
-
-var wsServer = new WebSocketServer({
-	httpServer: httpServer
-});
-
-
-// Iniciar el servidor HTTP en un puerto
-var puerto = 4444;
-httpServer.listen(puerto, function () {
-	console.log("Servidor de WebSocket iniciado en puerto:", puerto);
-});
-
-var clientes = []; //array de los clientes que se conectan
-// Esperar a clientes...
-wsServer.on("request", function (request) { // este callback se ejecuta cuando llega una nueva conexión de un cliente
-	var connection = request.accept("avisos", request.origin); // aceptar conexión
-	var cliente = { // creo un nuevo cliente
-		connection: connection,
-		tipo: null, // "sanitario" o "gestor"
+    const cliente = {
+        connection: connection,
+        tipo: null,
         id: null,
-		nombre:null
-	};
-	clientes.push(cliente); // lo añado a la lista de clientes
-	console.log("Cliente conectado. Ahora son:", clientes.length);
+        nombre: null
+    };
 
-    //mandar mensajes 
-    //HAY QUE MODIFICARLO CON NUESTROS CASOS DE MENSAJES
-    connection.on("message", function (message) { // mensaje recibido del cliente
-		if (message.type === "utf8") { // es un mensaje de texto
-			console.log("Mensaje recibido: " + message.utf8Data);
-			var msg = JSON.parse(message.utf8Data); // pasar de cadena a objeto (guarda lo que llega del cliente_rest)
-			
-			switch (msg.operacion) {
-				//identificar es la peticion del cliente
-				case "identificar": // se identifica un nuevo cliente
-					cliente.tipo = msg.tipo;
-					cliente.id = msg.id;
-					cliente.nombre = msg.nombre;
-					console.log("Se ha identificado:", cliente.tipo, cliente.id, cliente.nombre);
-					connection.sendUTF(JSON.stringify({
-						//identificado es la respuesta del servidor
-						operacion: "identificado",
-						texto: "Conectado como " + cliente.tipo
-						//nombre: clientes[i].nombre
-					}));
-					break;
+    clientes.push(cliente);
 
-				case "aviso":
-					var aviso = {
-						operacion: "aviso",
-						origen: cliente.nombre, // nombre del usuario que provoca el aviso
-						texto: msg.texto,
-						fecha: new Date(),
-						color: msg.color,
-						tipoAviso: msg.tipoAviso, // creacion_recurso, resenya, inicio_reserva o fin_reserva
-						idRecurso: msg.idRecurso // recurso afectado para filtrar avisos rojos
-					};
+    console.log('Cliente conectado. Ahora son:', clientes.length);
 
-					if(msg.destino === "sanitarios_recurso"){
-						enviarAvisoSanitariosConReservaActiva(msg.idRecurso, aviso); // filtra sanitarios con reserva activa
-					}
-					else{
-						enviarAviso(msg.destino, aviso); // envío normal a gestores o sanitarios
-					}
+    // RECIBIR MENSAJES
+    connection.on('message', async function(datos) {
 
-					break;
-				}
-			}
-	});
-    connection.on("close", function () { // conexión cerrada
-		console.log("Cliente desconectado");
-		for (var i=0;i<clientes.length;i++) { // busco el cliente
-			if (clientes[i] === cliente) {
-				clientes.splice(i, 1); // lo elimino
-				for (var j=0;j<clientes.length;j++) { // notifico al resto
-					clientes[j].connection.sendUTF(JSON.stringify({
-						operacion: "salir",
-						quien: cliente.nombre
-					}));
-				}
-				break;
-			}
-		}
-	});
+        let msg;
+
+        try {
+            msg = JSON.parse(datos.toString());
+        } catch (error) {
+            console.log('Mensaje WebSocket no valido:', error.message);
+            return;
+        }
+
+        switch (msg.operacion) {
+
+            // IDENTIFICAR CLIENTE
+            case 'identificar':
+
+                cliente.tipo = msg.tipo;
+                cliente.id = msg.id;
+                cliente.nombre = msg.nombre;
+
+                console.log(
+                    'Se ha identificado:',
+                    cliente.tipo,
+                    cliente.id,
+                    cliente.nombre
+                );
+
+                enviarAlCliente(cliente, {
+                    operacion: 'identificado',
+                    texto: 'Conectado como ' + cliente.tipo
+                });
+
+                break;
+
+            // ENVIAR AVISO
+            case 'aviso':
+
+                const aviso = {
+                    operacion: 'aviso',
+                    origen: cliente.nombre,
+                    texto: msg.texto,
+                    fecha: new Date(),
+                    color: msg.color,
+                    tipoAviso: msg.tipoAviso,
+                    idRecurso: msg.idRecurso
+                };
+
+                // Avisos rojos para sanitarios con reserva activa
+                if (msg.destino === 'sanitarios_recurso') {
+
+                    await enviarAvisoSanitariosConReservaActiva(
+                        msg.idRecurso,
+                        aviso
+                    );
+
+                } else {
+
+                    // Avisos normales a gestores o sanitarios
+                    enviarAviso(msg.destino, aviso);
+                }
+
+                break;
+        }
+    });
+
+    // DESCONEXION
+    connection.on('close', function() {
+
+        console.log('Cliente desconectado');
+
+        const indice = clientes.indexOf(cliente);
+
+        if (indice !== -1) {
+            clientes.splice(indice, 1);
+        }
+
+        // Notificar al resto
+        for (const otro of clientes) {
+
+            enviarAlCliente(otro, {
+                operacion: 'salir',
+                quien: cliente.nombre
+            });
+        }
+    });
+
+    connection.on('error', function(error) {
+        console.log('Error en WebSocket:', error.message);
+    });
 });
 
-//si msg.destino = gestor --> SOLO lo reciben los gestores
-//si msg.destino = sanitario --> SOLO lo reciben los sanitarios
-function enviarAviso(destino, aviso){
-	for(var i = 0; i<clientes.length; i++){
-		if(clientes[i].tipo == destino){
-			clientes[i].connection.sendUTF(JSON.stringify(aviso));
-		}
-	}
+
+// ENVIAR UN MENSAJE A UN CLIENTE
+
+function enviarAlCliente(cliente, mensaje) {
+
+    if (cliente.connection.readyState === WebSocket.OPEN) {
+        cliente.connection.send(JSON.stringify(mensaje));
+    }
 }
 
-function enviarAvisoSanitariosConReservaActiva(idRecurso, aviso){
 
-    conexionBD.query(
-        "SELECT * FROM reservas WHERE recurso = " + idRecurso +
-        " AND fecha_inicio IS NOT NULL AND fecha_fin IS NULL",
-        function(error, reservasActivas){
+// ENVIAR AVISO A GESTORES O SANITARIOS
 
-            if(error){
-                console.log("Error al consultar reservas activas:", error);
-                return;
-            }
+function enviarAviso(destino, aviso) {
 
-            for(var i = 0; i < clientes.length; i++){
+    for (const cliente of clientes) {
 
-                if(clientes[i].tipo === "sanitario"){
-
-                    for(var j = 0; j < reservasActivas.length; j++){
-
-                        if(reservasActivas[j].sanitario == clientes[i].id){
-
-                            clientes[i].connection.sendUTF(
-                                JSON.stringify(aviso)
-                            );
-
-                            break;
-                        }
-                    }
-                }
-            }
+        if (cliente.tipo === destino) {
+            enviarAlCliente(cliente, aviso);
         }
-    );
+    }
 }
 
 
-//en cliente_rest.js --> en main.js añadir conexion WebSocket del gestor, después de que el login Rest haya sido correcto
-// (y función para mostrar avisos)
-//  en ese index añadir tabla de avisos de los gestores
-//en cliente_rpc --> en main.js añadir coneción WebSocket después del login correcto del sanitario
-// (y función para mostrar avisos)
-//  en ese index añadir tabla de avisos de sanitarios
-// RESUMEN DE COMO DEBE QUEDAR LA ESTRUCTURA
-/**
-    servidor_ws.js
-    → nuevo servidor WebSocket
+// AVISO A SANITARIOS CON RESERVA ACTIVA
+// Consulta SUPABASE en lugar de MYSQL
 
-    cliente_rest/index.html
-    → añadir tabla de avisos para gestores
+async function enviarAvisoSanitariosConReservaActiva(idRecurso, aviso) {
 
-    cliente_rest/main.js
-    → conectar WS como gestor y enviar aviso al crear recurso
+    if (!/^\d+$/.test(String(idRecurso))) {
+        console.log('ID de recurso no valido');
+        return;
+    }
 
-    cliente_rpc/index.html
-    → añadir tabla de avisos para sanitarios
+    // Buscar reservas iniciadas y que todavia no han finalizado
+    const { data: reservasActivas, error } = await supabase
+        .from('reservas')
+        .select('sanitario')
+        .eq('recurso', Number(idRecurso))
+        .not('fecha_inicio', 'is', null)
+        .is('fecha_fin', null);
 
-    cliente_rpc/main.js
-    → conectar WS como sanitario y enviar avisos de reseñas/reservas
- */
+    if (error) {
+        console.log('Error al consultar reservas activas:', error);
+        return;
+    }
+
+    // Obtener los sanitarios afectados
+    const sanitariosAfectados = new Set(
+        reservasActivas.map(r => String(r.sanitario))
+    );
+
+    // Enviar solo a los sanitarios con reserva activa
+    for (const cliente of clientes) {
+
+        if (
+            cliente.tipo === 'sanitario' &&
+            sanitariosAfectados.has(String(cliente.id))
+        ) {
+            enviarAlCliente(cliente, aviso);
+        }
+    }
+}
+
+console.log('Servidor de WebSocket iniciado en puerto:', puerto);
