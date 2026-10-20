@@ -1,11 +1,23 @@
+
 {
+  "name": "app_rest_rpc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "servidor_rest.js",
+  "scripts": {
+    "start": "node servidor_rest.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.x.x",
-    "cors": "^2.8.6",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jwt-simple": "^0.5.6",
     "mysql": "^2.18.1",
-    "websocket": "^1.0.35"
-  }
+    "ws": "^8.20.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }
