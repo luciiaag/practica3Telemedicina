@@ -4,6 +4,13 @@ var app = express();
 var jwt = require('jwt-simple');
 var clave = 'miSecretoMasOscuro'; // clave para codificar / decodificar el token
 
+// importar el cliente de Supabase 
+const {createCliente} = requiere ('@supabase/supabase-js');
+
+// configurar la conexion 
+const supabaseUrl = 'https://jhrpvknlxprkivnimyxh.supabase.co';
+const supabaseKey = 'sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 
 //cuando alguien se conecta a /appCliente, se le manda lo que hay en la carpeta "cliente"
