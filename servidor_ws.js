@@ -2,11 +2,23 @@
 var http = require("http");
 var httpServer = http.createServer();
 
+// 1. Importar el cliente de Supabase
+const { createClient } = require('@supabase/supabase-js');
 
+// 2. Configurar con tu URL y tu Public Key (anon key)
+const supabaseUrl = 'https://jhrpvknlxprkivnimyxh.supabase.co';
+const supabaseKey = 'sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU'; // <--- Pega aquí tu public key
+const supabase = createClient(supabaseUrl, supabaseKey);
+//Antes de esto, instalo npm install jwt-simple
+
+var jwt = require("jwt-simple"); // PRÁCTICA 3 - PARTE 2: librería para crear y leer tokens JWT
+var clave = "miSecretoMasOscuro"; // clave para codificar / decodificar el token
+
+app.use(express.json()); 
 
 
 var WebSocketServer = require("websocket").server; 
-var conexionBD = require("./conexion_mysql.js");
+//var conexionBD = require("./conexion_mysql.js");
 
 var wsServer = new WebSocketServer({
 	httpServer: httpServer
