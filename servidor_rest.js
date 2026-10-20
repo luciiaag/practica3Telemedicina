@@ -6,37 +6,26 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 
 // CONEXION CON SUPABASE
+// URL y clave publica de TU proyecto, como en el ejemplo del profesor
 
-// URL original de tu proyecto
 const supabaseUrl = "https://jhrpvknlxprkivnimyxh.supabase.co";
+const supabaseKey = "sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU";
 
-// Clave publica original de tu proyecto
-const supabasePublicKey = "sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Para acceder desde el servidor a las tablas con RLS,
-// utilizamos la clave secreta guardada en Render.
-const supabaseKey =
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+// CLAVE PARA LOS TOKENS JWT
+var clave = "miSecretoMasOscuro";
 
-// Clave para los tokens JWT
-const clave = process.env.JWT_SECRET;
+// CONFIGURACION DEL SERVIDOR
 
-if (!supabaseKey || !clave) {
-    console.error("Faltan las claves de Supabase o JWT");
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-        persistSession: false,
-        autoRefreshToken: false
-    }
-});
-
-// Mostrar la aplicacion directamente en la URL de Render
-app.use(express.static("cliente_rest"));
 app.use(express.json());
+
+// Mostrar directamente la aplicacion al abrir Render
+app.use(express.static("cliente_rest"));
+
+// Mantener tambien la ruta original
+app.use("/appCliente", express.static("cliente_rest"));
+
 
 // FUNCIONES AUXILIARES
 
@@ -46,8 +35,7 @@ function errorBD(res, error, mensaje) {
 }
 
 function idValido(valor) {
-    return Number.isInteger(Number(valor)) &&
-           Number(valor) > 0;
+    return /^\d+$/.test(String(valor)) && Number(valor) > 0;
 }
 
 
@@ -61,7 +49,7 @@ app.post("/api/gestores/login", async function(req, res) {
         return res.status(403).json("Autenticacion incorrecta");
     }
 
-    // Buscar el gestor en Supabase
+    // Comprobar el usuario y la contraseña en Supabase
     const { data: gestores, error } = await supabase
         .from("gestores")
         .select("id")
@@ -79,7 +67,7 @@ app.post("/api/gestores/login", async function(req, res) {
 
     var encontrado = gestores[0];
 
-    // Crear el token JWT
+    // Crear token JWT
     var contenido = {
         usuario: encontrado.id,
         expira: Date.now() + 60 * 60 * 1000
@@ -94,7 +82,7 @@ app.post("/api/gestores/login", async function(req, res) {
 });
 
 
-// REGISTRAR GESTOR
+// REGISTRAR UN NUEVO GESTOR
 
 app.post("/api/gestores", async function(req, res) {
 
@@ -105,7 +93,7 @@ app.post("/api/gestores", async function(req, res) {
         return res.status(404).json("No puede haber campos vacíos");
     }
 
-    // Comprobar que el usuario no existe
+    // Comprobar si ya existe el usuario
     const { data: gestores, error: errorBusqueda } = await supabase
         .from("gestores")
         .select("id")
@@ -119,7 +107,7 @@ app.post("/api/gestores", async function(req, res) {
         return res.status(409).json("Usuario ya existe");
     }
 
-    // Insertar el nuevo gestor
+    // Insertar gestor
     const { data, error } = await supabase
         .from("gestores")
         .insert({
@@ -147,7 +135,8 @@ app.post("/api/gestores", async function(req, res) {
 });
 
 
-// COMPROBAR TOKEN JWT
+// COMPROBAR EL TOKEN JWT
+// Las rutas siguientes necesitan un token valido
 
 app.use("/api", function(req, res, next) {
 
@@ -170,7 +159,6 @@ app.use("/api", function(req, res, next) {
     if (!contenidoToken ||
         !contenidoToken.usuario ||
         !contenidoToken.expira) {
-
         return res.status(401).json("El formato del token no es adecuado");
     }
 
@@ -235,7 +223,7 @@ app.get("/api/modelos", async function(req, res) {
 });
 
 
-// EDITAR DATOS DE UN GESTOR
+// ACTUALIZAR DATOS DE UN GESTOR
 
 app.put("/api/gestores/:id", async function(req, res) {
 
@@ -250,7 +238,7 @@ app.put("/api/gestores/:id", async function(req, res) {
         return res.status(404).json("No puede haber campos vacíos");
     }
 
-    // Comprobar que existe el gestor
+    // Comprobar si existe el gestor
     const { data: gestor, error: errorGestor } = await supabase
         .from("gestores")
         .select("id")
@@ -265,7 +253,7 @@ app.put("/api/gestores/:id", async function(req, res) {
         return res.status(404).json("El gestor no existe");
     }
 
-    // Comprobar que otro gestor no utiliza ese usuario
+    // Comprobar que ningun otro gestor tiene ese usuario
     const { data: otros, error: errorUsuario } = await supabase
         .from("gestores")
         .select("id")
@@ -280,7 +268,7 @@ app.put("/api/gestores/:id", async function(req, res) {
         return res.status(409).json("Usuario ya existe");
     }
 
-    // Actualizar datos
+    // Actualizar gestor
     const { error } = await supabase
         .from("gestores")
         .update({
@@ -304,6 +292,7 @@ app.put("/api/gestores/:id", async function(req, res) {
 
 
 // OBTENER DATOS DE UN GESTOR
+// No devolver su contraseña
 
 app.get("/api/gestores/:id", async function(req, res) {
 
@@ -332,6 +321,7 @@ app.get("/api/gestores/:id", async function(req, res) {
 
 
 // OBTENER DATOS DE UN SANITARIO
+// No devolver su contraseña
 
 app.get("/api/sanitarios/:id", async function(req, res) {
 
@@ -359,42 +349,42 @@ app.get("/api/sanitarios/:id", async function(req, res) {
 });
 
 
-// BUSCAR RECURSOS CON FILTROS
+// OBTENER RECURSOS CON FILTROS
 
 app.get("/api/recursos", async function(req, res) {
 
-    var idCat = req.query.categoria;
-    var idMod = req.query.modelo;
-    var idUbi = req.query.ubicacion;
-    var idEst = req.query.estado;
+    var idCategoria = req.query.categoria;
+    var idModelo = req.query.modelo;
+    var idUbicacion = req.query.ubicacion;
+    var idEstado = req.query.estado;
 
     var consulta = supabase
         .from("recurso")
         .select("*")
         .order("id");
 
-    // Filtro por modelo
-    if (idMod !== undefined && idMod !== "") {
-        consulta = consulta.eq("modelo", idMod);
+    // FILTRO POR MODELO
+    if (idModelo !== undefined && idModelo !== "") {
+        consulta = consulta.eq("modelo", idModelo);
     }
 
-    // Filtro por ubicacion
-    if (idUbi !== undefined && idUbi !== "") {
-        consulta = consulta.eq("ubicacion", idUbi);
+    // FILTRO POR UBICACION
+    if (idUbicacion !== undefined && idUbicacion !== "") {
+        consulta = consulta.eq("ubicacion", idUbicacion);
     }
 
-    // Filtro por estado
-    if (idEst !== undefined && idEst !== "") {
-        consulta = consulta.eq("estado", idEst);
+    // FILTRO POR ESTADO
+    if (idEstado !== undefined && idEstado !== "") {
+        consulta = consulta.eq("estado", idEstado);
     }
 
-    // Filtro por categoria
-    if (idCat !== undefined && idCat !== "") {
+    // FILTRO POR CATEGORIA
+    if (idCategoria !== undefined && idCategoria !== "") {
 
         const { data: modelos, error: errorModelos } = await supabase
             .from("modelos")
             .select("id")
-            .eq("categoria", idCat);
+            .eq("categoria", idCategoria);
 
         if (errorModelos) {
             return errorBD(res, errorModelos, "Error al realizar el select");
@@ -404,7 +394,11 @@ app.get("/api/recursos", async function(req, res) {
             return res.status(200).json([]);
         }
 
-        consulta = consulta.in("modelo", modelos.map(m => m.id));
+        var idsModelos = modelos.map(function(modelo) {
+            return modelo.id;
+        });
+
+        consulta = consulta.in("modelo", idsModelos);
     }
 
     const { data, error } = await consulta;
@@ -417,7 +411,7 @@ app.get("/api/recursos", async function(req, res) {
 });
 
 
-// OBTENER UN RECURSO
+// OBTENER UN RECURSO POR ID
 
 app.get("/api/recursos/:id", async function(req, res) {
 
@@ -445,13 +439,14 @@ app.get("/api/recursos/:id", async function(req, res) {
 });
 
 
-// CREAR RECURSO
+// CREAR UN NUEVO RECURSO
 
 app.post("/api/recursos", async function(req, res) {
 
     var { modelo, ubicacion, numero_serie, estado } = req.body || {};
 
-    if (!modelo || !ubicacion || !numero_serie || estado === undefined) {
+    if (!modelo || !ubicacion || !numero_serie ||
+        estado === undefined) {
         return res.status(404).json("No puede haber campos vacíos");
     }
 
@@ -474,7 +469,7 @@ app.post("/api/recursos", async function(req, res) {
 });
 
 
-// EDITAR RECURSO
+// ACTUALIZAR UN RECURSO
 
 app.put("/api/recursos/:id", async function(req, res) {
 
@@ -484,7 +479,7 @@ app.put("/api/recursos/:id", async function(req, res) {
         return res.status(404).json("El recurso no existe");
     }
 
-    // Comprobar que existe
+    // Comprobar que existe el recurso
     const { data: recurso, error: errorRecurso } = await supabase
         .from("recurso")
         .select("id")
@@ -501,7 +496,8 @@ app.put("/api/recursos/:id", async function(req, res) {
 
     var { modelo, ubicacion, numero_serie, estado } = req.body || {};
 
-    if (!modelo || !ubicacion || !numero_serie || estado === undefined) {
+    if (!modelo || !ubicacion || !numero_serie ||
+        estado === undefined) {
         return res.status(404).json("No puede haber campos vacíos");
     }
 
@@ -523,7 +519,7 @@ app.put("/api/recursos/:id", async function(req, res) {
 });
 
 
-// BORRAR RECURSO
+// BORRAR UN RECURSO
 
 app.delete("/api/recursos/:id", async function(req, res) {
 
@@ -533,7 +529,7 @@ app.delete("/api/recursos/:id", async function(req, res) {
         return res.status(404).json("Recurso no encontrado");
     }
 
-    // Comprobar que existe
+    // Comprobar que existe el recurso
     const { data: recurso, error: errorRecurso } = await supabase
         .from("recurso")
         .select("id")
@@ -548,7 +544,7 @@ app.delete("/api/recursos/:id", async function(req, res) {
         return res.status(404).json("Recurso no encontrado");
     }
 
-    // Borrar el recurso
+    // Eliminar recurso
     const { error } = await supabase
         .from("recurso")
         .delete()
@@ -562,7 +558,7 @@ app.delete("/api/recursos/:id", async function(req, res) {
 });
 
 
-// OBTENER RESERVAS Y RESEÑAS DE UN RECURSO
+// FUNCION PARA OBTENER RESERVAS O RESEÑAS DE UN RECURSO
 
 async function obtenerDatosRecurso(res, idRecurso, tabla) {
 
@@ -570,7 +566,7 @@ async function obtenerDatosRecurso(res, idRecurso, tabla) {
         return res.status(404).json("Recurso no encontrado");
     }
 
-    // Comprobar que existe el recurso
+    // Comprobar que el recurso existe
     const { data: recurso, error: errorRecurso } = await supabase
         .from("recurso")
         .select("id")
@@ -585,7 +581,7 @@ async function obtenerDatosRecurso(res, idRecurso, tabla) {
         return res.status(404).json("Recurso no encontrado");
     }
 
-    // Obtener sus reservas o reseñas
+    // Consultar la tabla indicada
     const { data, error } = await supabase
         .from(tabla)
         .select("*")
@@ -600,7 +596,7 @@ async function obtenerDatosRecurso(res, idRecurso, tabla) {
 }
 
 
-// OBTENER RESERVAS
+// OBTENER RESERVAS DE UN RECURSO
 
 app.get("/api/recursos/:id/reservas", async function(req, res) {
 
@@ -609,7 +605,7 @@ app.get("/api/recursos/:id/reservas", async function(req, res) {
 });
 
 
-// OBTENER RESEÑAS
+// OBTENER RESEÑAS DE UN RECURSO
 
 app.get("/api/recursos/:id/resenyas", async function(req, res) {
 
@@ -618,7 +614,7 @@ app.get("/api/recursos/:id/resenyas", async function(req, res) {
 });
 
 
-// INICIAR SERVIDOR REST
+// INICIAR EL SERVIDOR REST
 
 var puerto = process.env.PORT || 3000;
 
