@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 
 //cuando alguien se conecta a /appCliente, se le manda lo que hay en la carpeta "cliente"
-app.use("/appCliente", express.static("cliente_rest"));
+app.use(express.static("cliente_rest"));
 app.use(express.json());
 
 
