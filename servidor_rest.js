@@ -5,7 +5,7 @@ var jwt = require('jwt-simple');
 var clave = 'miSecretoMasOscuro'; // clave para codificar / decodificar el token
 
 // importar el cliente de Supabase 
-const {createCliente} = requiere ('@supabase/supabase-js');
+const { createClient } = require('@supabase/supabase-js');
 
 // configurar la conexion 
 const supabaseUrl = 'https://jhrpvknlxprkivnimyxh.supabase.co';
