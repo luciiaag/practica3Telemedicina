@@ -9,7 +9,7 @@ const app = express();
 // URL y clave publica de TU proyecto, como en el ejemplo del profesor
 
 const supabaseUrl = "https://jhrpvknlxprkivnimyxh.supabase.co";
-const supabaseKey = "sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU";
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
