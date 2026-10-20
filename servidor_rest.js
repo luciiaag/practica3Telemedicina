@@ -1,8 +1,17 @@
-var conexion = require("./conexion_mysql.js")
+//var conexion = require("./conexion_mysql.js")
 var express = require("express");
 var app = express();
 var jwt = require('jwt-simple');
 var clave = 'miSecretoMasOscuro'; // clave para codificar / decodificar el token
+
+// Importar el cliente de Supabase 
+const {createClient} = require('@supabase/supabase-js'); 
+
+// configurar con la URL y Public Key 
+
+const supabaseUrl = 'https://jhrpvknlxprkivnimyxh.supabase.co'; 
+const supabaseKey = 'sb_publishable_LTdxPUTHYsaXAP0qjDtmRQ_S1tIxsWU'; 
+const supabase = createClient(supabaseUrl, supabaseKey); 
 
 
 
