@@ -1047,4 +1047,5 @@ function reservasTotalMinisterio(){
 
     alert("El numero de reservas es: " + total); 
     return; 
+}
 
