@@ -1039,3 +1039,11 @@ function obtenerReservasMinisterio(){
     });
 }
 
+// EJERICICIO 1 
+function reservasTotalMinisterio(){
+    var reservas = obtenerReservasMinisterio(); 
+
+    var total = reservas.length; 
+
+    return total; 
+
