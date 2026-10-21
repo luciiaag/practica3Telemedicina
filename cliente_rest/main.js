@@ -1039,45 +1039,4 @@ function obtenerReservasMinisterio(){
     });
 }
 
-// EJERICICIO 1 
-// EJERCICIO 1
-function reservasTotalMinisterio(){
-
-    var urlMinisterio = "https://undefined.ua.es/telemedicina/api/datos";
-
-    rest.get(urlMinisterio, function(estado, respuesta){
-
-        if(estado === 200){
-
-            var total = 0;
-
-            // recorremos todos los registros del Ministerio
-            for(var i = 0; i < respuesta.length; i++){
-
-                var registro = respuesta[i];
-
-                // comprobamos que los datos sean un array
-                if(Array.isArray(registro.datos)){
-
-                    // recorremos todas las reservas del registro
-                    for(var j = 0; j < registro.datos.length; j++){
-
-                        // contamos solo las reservas válidas
-                        if(reservaMinisterioValida(registro.datos[j])){
-                            total++;
-                        }
-                    }
-                }
-            }
-
-            alert("El número total de reservas del Ministerio es: " + total);
-            console.log("Total de reservas del Ministerio:", total);
-
-        }
-        else{
-            alert("Error al obtener las reservas del Ministerio");
-        }
-
-    });
-}
 
